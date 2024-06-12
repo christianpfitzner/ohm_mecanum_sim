@@ -30,6 +30,7 @@ def main(args=None):
     sim.add_rectangle_pixelcoords([border, border], [width-border, height-border])
     border = 300
     sim.add_rectangle_pixelcoords([border, border], [width-border, height-border])
+    sim.add_finish_line([50, 50], [100, 100])
     sim.start_scheduler()
     
     executor = SingleThreadedExecutor()

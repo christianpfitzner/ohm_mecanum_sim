@@ -7,6 +7,7 @@
 # ------------------------------------------------------------
 
 import pygame
+import pygame.freetype  # Import the freetype module.
 import sys
 
 import rclpy
@@ -20,10 +21,15 @@ class Ohm_Mecanum_Simulator(Node):
     def __init__(self, surface, rosname, windowtitle):
         super().__init__(rosname)
         self._surface = surface
+        self._background = pygame.Surface(self._surface.get_size())
         self._meter_to_pixel = 100
         self._robots = []
         self._line_segment_obstacles = []
         self._verbose = False
+
+        self._laptime_start = 0
+
+
         _default_callback_group = Node.default_callback_group
         timer_period = 0.05
         pygame.display.set_caption(windowtitle)
@@ -38,6 +44,40 @@ class Ohm_Mecanum_Simulator(Node):
         self.timer = self.create_timer(timer_period, self.timer_callback)
 
 
+    def ui_scheduler(self):
+        clock = pygame.time.Clock()
+        clock.tick(360)
+        timer_period = 0.1
+        self.ui_timer = self.create_timer(timer_period, self.ui_timer_callback)
+
+
+    def ui_timer_callback(self):
+        print("UI Timer Callback")
+        
+
+
+    def start_laptime(self):
+        self._laptime_start  = pygame.time.get_ticks() 
+
+
+    def stop_laptime(self):
+        laptime = pygame.time.get_ticks() - self._laptime_start
+        print("Laptime: " + str(laptime) + " ms")
+
+
+    def reset_laptime(self):
+        self.stop_laptime()
+        self._laptime_start = 0
+
+
+    def get_running_laptime(self):
+
+        laptime = pygame.time.get_ticks() - self._laptime_start
+
+        print ("Laptime: " + str(laptime) + " ms")
+        # return pygame.time.get_ticks() - self._laptime_start
+
+
     def timer_callback(self):
         bg_color = (64, 64, 255)
         
@@ -48,6 +88,15 @@ class Ohm_Mecanum_Simulator(Node):
                 if event.key == pygame.K_c and pygame.key.get_mods() & pygame.KMOD_CTRL:
                     self.exit_simulation()
         self._surface.fill(bg_color)
+
+        self._background.fill((0, 255, 0))
+        pygame.draw.rect(self._background, (0, 0, 255), (400, 600, 10, 300))
+
+
+        self._background.set_alpha(128)
+        # self._background.blit(self._surface, (0, 0))
+        self._surface.blit(self._background, (0, 0))
+
 
         # Draw obstacles
         for obstacle in self._line_segment_obstacles:
@@ -102,12 +151,25 @@ class Ohm_Mecanum_Simulator(Node):
             elif (r._coords[0] < 0 or r._coords[1] < 0 or r._coords[0] > self._surface.get_width()/self._meter_to_pixel or r._coords[1] > self._surface.get_height()/self._meter_to_pixel):
                 r.reset_pose()
 
+
+
+
+            # todo make this more flexible
+            # start the lap timer
+            if r._coords[0] < 4.2  and r._coords[0] > 4.10 and r._coords[1] < 3.00 and r._coords[1] > 0.0:
+                self.start_laptime()
+
+
+            # check if the robot is on the finish line
+            if r._coords[0] < 4.1  and r._coords[0] > 4.00 and r._coords[1] < 3.00 and r._coords[1] > 0.0:
+                self.stop_laptime()
+
             # Draw ToF beams
             pos_hitpoint = r.get_hit_tof(dist_to_obstacles)
             for i in range(0,r.get_tof_count()):
                 pixel_sensor = self.transform_to_pixelcoords(pos_sensor[i])
                 pixel_hitpoint = self.transform_to_pixelcoords(pos_hitpoint[i])
-                pygame.draw.line(self._surface, pygame.Color(255, 0, 0), pixel_sensor, pixel_hitpoint)  
+                pygame.draw.line(self._surface, pygame.Color(255, 0, 0, 128), pixel_sensor, pixel_hitpoint)  
 
         pygame.display.update()
     
@@ -135,6 +197,15 @@ class Ohm_Mecanum_Simulator(Node):
         self.add_line_segment_obstacle(line_segment)
         line_segment = (self.transform_to_robotcoords([coords2[0], coords1[1]]), self.transform_to_robotcoords([coords1[0], coords1[1]]))
         self.add_line_segment_obstacle(line_segment)
+
+
+    def add_finish_line(self, coords1, coords2):
+        pass
+
+        # insert line in the background 
+        # self._surface.add_line_segment_pixelcoords(coords1, coords2)
+
+
 
 
     def add_line_segment_obstacle(self, line_segment):

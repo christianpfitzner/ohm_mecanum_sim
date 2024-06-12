@@ -214,7 +214,8 @@ class Robot(Node):
             # # Publish pose
             p = PoseStamped()
             p.header.frame_id = "map"
-            p.header.stamp = self._timestamp.to_msg()
+            # p.header.stamp = self._timestamp.to_msg()
+            p.header.stamp = self.get_clock().now().to_msg()
             p.pose.position.x = self._coords[0]
             p.pose.position.y = self._coords[1]
             p.pose.position.z = 0.0
@@ -225,7 +226,8 @@ class Robot(Node):
             self._pub_pose.publish(p)
 
             t = TransformStamped()
-            t.header.stamp = self._timestamp.to_msg()
+            # t.header.stamp = self._timestamp.to_msg()
+            t.header.stamp = self.get_clock().now().to_msg()
             t.header.frame_id = 'map'
             t.child_frame_id = 'base_link'
             t.transform.translation.x = p.pose.position.x
@@ -246,9 +248,9 @@ class Robot(Node):
             o.child_frame_id = "base_link"
             o.pose.pose.position = p.pose.position
             o.pose.pose.orientation = p.pose.orientation
-            o.twist.twist.linear.x = v[0];
-            o.twist.twist.linear.y = v[1];
-            o.twist.twist.angular.z = self._omega;
+            o.twist.twist.linear.x = v[0]
+            o.twist.twist.linear.y = v[1]
+            o.twist.twist.angular.z = self._omega
             self._pub_odom.publish(o)
 
             if(self._reset):
@@ -379,6 +381,26 @@ class Robot(Node):
         return dist_to_obstacles
 
     def callback_twist(self, data):
+
+        # limit the linear velocity to 1.5 m/s for x and y direction
+        if data.linear.x > 1.5:
+            data.linear.x = 1.5
+        if data.linear.x < -1.5:
+            data.linear.x = -1.5
+        if data.linear.y > 1.5:
+            data.linear.y = 1.5
+        if data.linear.y < -1.5:
+            data.linear.y = -1.5
+
+
+        # limit the angular velocity to 2.0 rad/s
+        if data.angular.z > 2.0:
+            data.angular.z = 2.0
+        if data.angular.z < -2.0:
+            data.angular.z = -2.0
+            
+
+
         self.set_velocity(data.linear.x, data.linear.y, data.angular.z)
         self._last_command = self.get_clock().now()
 
