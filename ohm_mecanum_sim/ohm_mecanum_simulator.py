@@ -28,11 +28,32 @@ class Ohm_Mecanum_Simulator(Node):
         self._verbose = False
 
         self._laptime_start = 0
+        self._laptime_measurement_running = False
+
+        self._best_laptime = 9999999
 
 
         _default_callback_group = Node.default_callback_group
         timer_period = 0.05
         pygame.display.set_caption(windowtitle)
+
+
+
+        # Initialize the font system and create the font and font renderer
+        pygame.font.init()
+        default_font  = pygame.font.get_default_font()
+        self._font_renderer = pygame.font.Font(default_font, 12)
+
+
+        self._label = self._font_renderer.render(
+                                "",   # The font to render
+                                1,             # With anti aliasing
+                                (255,255,255)) # RGB Color
+        
+        self._best_laptime_label = self._font_renderer.render(
+                                "",   # The font to render
+                                1,             # With anti aliasing
+                                (255,255,255))
 
     def __del__(self):
         pass
@@ -57,12 +78,33 @@ class Ohm_Mecanum_Simulator(Node):
 
 
     def start_laptime(self):
+        self._laptime_measurement_running = True
         self._laptime_start  = pygame.time.get_ticks() 
-
+    
 
     def stop_laptime(self):
         laptime = pygame.time.get_ticks() - self._laptime_start
-        print("Laptime: " + str(laptime) + " ms")
+        if self._laptime_measurement_running:
+            self._laptime_measurement_running = False
+
+
+            print("Laptime: " + str(laptime / 1000.0) + " s")
+            self._label = self._font_renderer.render(
+                                "Laptime: " + str(laptime / 1000.0) + " s",   # The font to render
+                                1,             # With anti aliasing
+                                (255,255,255)) # RGB Color
+ 
+
+            # print best laptime and laptime
+
+            if laptime < self._best_laptime:
+                self._best_laptime = laptime
+                print("New best laptime: " + str(laptime / 1000.0) + " s")
+                self._best_laptime_label = self._font_renderer.render(
+                                "Best Laptime: " + str(laptime / 1000.0) + " s",   # The font to render
+                                1,             # With anti aliasing
+                                (255,255,255)) # RGB Color
+                
 
 
     def reset_laptime(self):
@@ -74,8 +116,9 @@ class Ohm_Mecanum_Simulator(Node):
 
         laptime = pygame.time.get_ticks() - self._laptime_start
 
-        print ("Laptime: " + str(laptime) + " ms")
-        # return pygame.time.get_ticks() - self._laptime_start
+        print ("Laptime: " + str(laptime/ 1000.0) + " s")
+
+
 
 
     def timer_callback(self):
@@ -96,6 +139,10 @@ class Ohm_Mecanum_Simulator(Node):
         self._background.set_alpha(128)
         # self._background.blit(self._surface, (0, 0))
         self._surface.blit(self._background, (0, 0))
+
+        self._surface.blit(self._label, (10, 10))
+
+        self._surface.blit(self._best_laptime_label, (10, 40))
 
 
         # Draw obstacles
@@ -179,6 +226,10 @@ class Ohm_Mecanum_Simulator(Node):
         return robot
 
     def kill_robot(self, name):
+
+        self.reset_laptime()
+        self._laptime_measurement_running = False
+
         for r in self._robots:
             if(r._name == name):
                 r.stop()
